@@ -6,8 +6,9 @@ import { app } from './ui/ui.js';
 import { Observable, Subject, from, merge } from 'rxjs';
 import { mergeMap, filter, map, multicast } from 'rxjs/operators';
 import { gltfModelPathProvider, fillEnvironmentWithPaths } from './model_path_provider.js';
-//test
-async function main() {
+
+async function main()
+{
     const canvas = document.getElementById("canvas");
     const context = canvas.getContext("webgl2", { alpha: false, antialias: true });
     const ui = document.getElementById("app");
@@ -37,19 +38,22 @@ async function main() {
     // into a stream back into the UI
     const gltfLoadedSubject = new Subject();
     const gltfLoadedMulticast = uiModel.model.pipe(
-        mergeMap((model) => {
-            uiModel.goToLoadingState();
+        mergeMap( (model) =>
+        {
+        	uiModel.goToLoadingState();
 
             // Workaround for errors in ktx lib after loading an asset with ktx2 files for the second time:
             resourceLoader.initKtxLib();
 
-            return from(resourceLoader.loadGltf(model.mainFile, model.additionalFiles).then((gltf) => {
+            return from(resourceLoader.loadGltf(model.mainFile, model.additionalFiles).then( (gltf) => {
                 state.gltf = gltf;
                 const defaultScene = state.gltf.scene;
                 state.sceneIndex = defaultScene === undefined ? 0 : defaultScene;
                 state.cameraIndex = undefined;
-                if (state.gltf.scenes.length != 0) {
-                    if (state.sceneIndex > state.gltf.scenes.length - 1) {
+                if (state.gltf.scenes.length != 0)
+                {
+                    if(state.sceneIndex > state.gltf.scenes.length - 1)
+                    {
                         state.sceneIndex = 0;
                     }
                     const scene = state.gltf.scenes[state.sceneIndex];
@@ -59,8 +63,10 @@ async function main() {
 
                     // Try to start as many animations as possible without generating conficts.
                     state.animationIndices = [];
-                    for (let i = 0; i < gltf.animations.length; i++) {
-                        if (!gltf.nonDisjointAnimations(state.animationIndices).includes(i)) {
+                    for (let i = 0; i < gltf.animations.length; i++)
+                    {
+                        if (!gltf.nonDisjointAnimations(state.animationIndices).includes(i))
+                        {
                             state.animationIndices.push(i);
                         }
                     }
@@ -83,16 +89,17 @@ async function main() {
     })));
 
     const sceneChangedSubject = new Subject();
-    const sceneChangedObservable = uiModel.scene.pipe(map(newSceneIndex => {
+    const sceneChangedObservable = uiModel.scene.pipe(map( newSceneIndex => {
         state.sceneIndex = newSceneIndex;
         state.cameraIndex = undefined;
         const scene = state.gltf.scenes[state.sceneIndex];
-        if (scene !== undefined) {
+        if (scene !== undefined)
+        {
             scene.applyTransformHierarchy(state.gltf);
             state.userCamera.fitViewToScene(state.gltf, state.sceneIndex);
         }
     }),
-        multicast(sceneChangedSubject)
+    multicast(sceneChangedSubject)
     );
 
     const statisticsUpdateObservableTemp = merge(
@@ -101,12 +108,13 @@ async function main() {
     );
 
     const statisticsUpdateObservable = statisticsUpdateObservableTemp.pipe(
-        map((_) => view.gatherStatistics(state))
+        map( (_) => view.gatherStatistics(state) )
     );
 
-    const cameraExportChangedObservable = uiModel.cameraValuesExport.pipe(map(_ => {
+    const cameraExportChangedObservable = uiModel.cameraValuesExport.pipe( map(_ => {
         let camera = state.userCamera;
-        if (state.cameraIndex !== undefined) {
+        if(state.cameraIndex !== undefined)
+        {
             camera = state.gltf.cameras[state.cameraIndex];
         }
         const cameraDesc = camera.getDescription(state.gltf);
@@ -126,157 +134,164 @@ async function main() {
         document.body.removeChild(element);
     };
 
-    cameraExportChangedObservable.subscribe(cameraDesc => {
+    cameraExportChangedObservable.subscribe( cameraDesc => {
         const gltf = JSON.stringify(cameraDesc, undefined, 4);
-        const dataURL = 'data:text/plain;charset=utf-8,' + encodeURIComponent(gltf);
+        const dataURL = 'data:text/plain;charset=utf-8,' +  encodeURIComponent(gltf);
         downloadDataURL("camera.gltf", dataURL);
     });
 
-    uiModel.captureCanvas.subscribe(() => {
+    uiModel.captureCanvas.subscribe( () => {
         view.renderFrame(state, canvas.width, canvas.height);
         const dataURL = canvas.toDataURL();
         downloadDataURL("capture.png", dataURL);
     });
-
-    uiModel.scene.pipe(filter(scene => scene === -1)).subscribe(() => {
+    
+    uiModel.scene.pipe(filter(scene => scene === -1)).subscribe( () => {
         state.sceneIndex = undefined;
     });
-    uiModel.scene.pipe(filter(scene => scene !== -1)).subscribe(scene => {
+    uiModel.scene.pipe(filter(scene => scene !== -1)).subscribe( scene => {
         state.sceneIndex = scene;
     });
 
-    uiModel.camera.pipe(filter(camera => camera === -1)).subscribe(() => {
+    uiModel.camera.pipe(filter(camera => camera === -1)).subscribe( () => {
         state.cameraIndex = undefined;
     });
-    uiModel.camera.pipe(filter(camera => camera !== -1)).subscribe(camera => {
+    uiModel.camera.pipe(filter(camera => camera !== -1)).subscribe( camera => {
         state.cameraIndex = camera;
     });
 
-    uiModel.variant.subscribe(variant => {
+    uiModel.variant.subscribe( variant => {
         state.variant = variant;
     });
 
-    uiModel.tonemap.subscribe(tonemap => {
+    uiModel.tonemap.subscribe( tonemap => {
         state.renderingParameters.toneMap = tonemap;
     });
 
-    uiModel.debugchannel.subscribe(debugchannel => {
+    uiModel.debugchannel.subscribe( debugchannel => {
         state.renderingParameters.debugOutput = debugchannel;
     });
 
-    uiModel.skinningEnabled.subscribe(skinningEnabled => {
+    uiModel.skinningEnabled.subscribe( skinningEnabled => {
         state.renderingParameters.skinning = skinningEnabled;
     });
 
-    uiModel.exposurecompensation.subscribe(exposurecompensation => {
+    uiModel.exposurecompensation.subscribe( exposurecompensation => {
         state.renderingParameters.exposure = Math.pow(2, exposurecompensation);
     });
 
-    uiModel.morphingEnabled.subscribe(morphingEnabled => {
+    uiModel.morphingEnabled.subscribe( morphingEnabled => {
         state.renderingParameters.morphing = morphingEnabled;
     });
 
-    uiModel.clearcoatEnabled.subscribe(clearcoatEnabled => {
+    uiModel.clearcoatEnabled.subscribe( clearcoatEnabled => {
         state.renderingParameters.enabledExtensions.KHR_materials_clearcoat = clearcoatEnabled;
     });
-    uiModel.sheenEnabled.subscribe(sheenEnabled => {
+    uiModel.sheenEnabled.subscribe( sheenEnabled => {
         state.renderingParameters.enabledExtensions.KHR_materials_sheen = sheenEnabled;
     });
-    uiModel.transmissionEnabled.subscribe(transmissionEnabled => {
+    uiModel.transmissionEnabled.subscribe( transmissionEnabled => {
         state.renderingParameters.enabledExtensions.KHR_materials_transmission = transmissionEnabled;
     });
-    uiModel.volumeEnabled.subscribe(volumeEnabled => {
+    uiModel.volumeEnabled.subscribe( volumeEnabled => {
         state.renderingParameters.enabledExtensions.KHR_materials_volume = volumeEnabled;
     });
-    uiModel.iorEnabled.subscribe(iorEnabled => {
+    uiModel.iorEnabled.subscribe( iorEnabled => {
         state.renderingParameters.enabledExtensions.KHR_materials_ior = iorEnabled;
     });
-    uiModel.specularEnabled.subscribe(specularEnabled => {
+    uiModel.specularEnabled.subscribe( specularEnabled => {
         state.renderingParameters.enabledExtensions.KHR_materials_specular = specularEnabled;
     });
 
-    uiModel.iblEnabled.subscribe(iblEnabled => {
+    uiModel.iblEnabled.subscribe( iblEnabled => {
         state.renderingParameters.useIBL = iblEnabled;
     });
 
-    uiModel.renderEnvEnabled.subscribe(renderEnvEnabled => {
+    uiModel.renderEnvEnabled.subscribe( renderEnvEnabled => {
         state.renderingParameters.renderEnvironmentMap = renderEnvEnabled;
     });
-    uiModel.blurEnvEnabled.subscribe(blurEnvEnabled => {
+    uiModel.blurEnvEnabled.subscribe( blurEnvEnabled => {
         state.renderingParameters.blurEnvironmentMap = blurEnvEnabled;
     });
 
-    uiModel.punctualLightsEnabled.subscribe(punctualLightsEnabled => {
+    uiModel.punctualLightsEnabled.subscribe( punctualLightsEnabled => {
         state.renderingParameters.usePunctual = punctualLightsEnabled;
     });
 
-    uiModel.environmentRotation.subscribe(environmentRotation => {
-        switch (environmentRotation) {
-            case "+Z":
-                state.renderingParameters.environmentRotation = 90.0;
-                break;
-            case "-X":
-                state.renderingParameters.environmentRotation = 180.0;
-                break;
-            case "-Z":
-                state.renderingParameters.environmentRotation = 270.0;
-                break;
-            case "+X":
-                state.renderingParameters.environmentRotation = 0.0;
-                break;
+    uiModel.environmentRotation.subscribe( environmentRotation => {
+        switch (environmentRotation)
+        {
+        case "+Z":
+            state.renderingParameters.environmentRotation = 90.0;
+            break;
+        case "-X":
+            state.renderingParameters.environmentRotation = 180.0;
+            break;
+        case "-Z":
+            state.renderingParameters.environmentRotation = 270.0;
+            break;
+        case "+X":
+            state.renderingParameters.environmentRotation = 0.0;
+            break;
         }
     });
 
 
-    uiModel.clearColor.subscribe(clearColor => {
+    uiModel.clearColor.subscribe( clearColor => {
         state.renderingParameters.clearColor = clearColor;
     });
 
-    uiModel.animationPlay.subscribe(animationPlay => {
-        if (animationPlay) {
+    uiModel.animationPlay.subscribe( animationPlay => {
+        if(animationPlay)
+        {
             state.animationTimer.unpause();
         }
-        else {
+        else
+        {
             state.animationTimer.pause();
         }
     });
 
-    uiModel.activeAnimations.subscribe(animations => {
+    uiModel.activeAnimations.subscribe( animations => {
         state.animationIndices = animations;
     });
 
-    uiModel.hdr.subscribe(hdrFile => {
-        resourceLoader.loadEnvironment(hdrFile).then((environment) => {
+    uiModel.hdr.subscribe( hdrFile => {
+        resourceLoader.loadEnvironment(hdrFile).then( (environment) => {
             state.environment = environment;
         });
     });
 
     uiModel.attachGltfLoaded(gltfLoadedMulticast);
     uiModel.updateStatistics(statisticsUpdateObservable);
-    const sceneChangedStateObservable = uiModel.scene.pipe(map(newSceneIndex => state));
+    const sceneChangedStateObservable = uiModel.scene.pipe(map( newSceneIndex => state));
     uiModel.attachCameraChangeObservable(sceneChangedStateObservable);
     gltfLoadedMulticast.connect();
 
-    uiModel.orbit.subscribe(orbit => {
-        if (state.cameraIndex === undefined) {
+    uiModel.orbit.subscribe( orbit => {
+        if (state.cameraIndex === undefined)
+        {
             state.userCamera.orbit(orbit.deltaPhi, orbit.deltaTheta);
         }
     });
 
-    uiModel.pan.subscribe(pan => {
-        if (state.cameraIndex === undefined) {
+    uiModel.pan.subscribe( pan => {
+        if (state.cameraIndex === undefined)
+        {
             state.userCamera.pan(pan.deltaX, -pan.deltaY);
         }
     });
 
-    uiModel.zoom.subscribe(zoom => {
-        if (state.cameraIndex === undefined) {
+    uiModel.zoom.subscribe( zoom => {
+        if (state.cameraIndex === undefined)
+        {
             state.userCamera.zoomBy(zoom.deltaZoom);
         }
     });
 
     // configure the animation loop
-    const update = () => {
+    const update = () =>
+    {
         const devicePixelRatio = window.devicePixelRatio || 1;
 
         // set the size of the drawingBuffer based on the size it's displayed.
